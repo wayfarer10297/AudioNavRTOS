@@ -12,8 +12,8 @@ This test sketch sets out the basic elements of creating a WiFi Access Point usi
 ESP32 for the purposes of establishing a WiFi-based Telnet link to one or more WiFi
 clients.
 *************************************************************************************/
-#ifndef GPS_HPP
-#define GPS_HPP
+#ifndef WIFIAP_HPP
+#define WIFIAP_HPP
 //-----------------------------------------------------------------------------------
 
 #include <WiFi.h>
@@ -25,7 +25,7 @@ clients.
 #define		WIFI_MAX_CLIENTS 5
 
 
-WiFiServer telnetServer(23);  // Port number for the Telnet service
+WiFiServer telnetServer(23);  		// Port number for the Telnet service
 WiFiClient **telnetClients = {NULL};
 
 
@@ -42,14 +42,18 @@ void setupWiFiAP(){
 }
 
 
-// Task to periodically scan for new Wi-Fi Clients wishing to connect to the AP
+// RTOS TASK function:
+// ONCE ONLY:  Sets up WiFi ACCESS POINT
+// DO FOREVER: Scans once per second to look for new Wi-Fi Clients wishing to connect to the AP
 void WiFiClientScan(void * parameter)
 {
+	setupWiFiAP();  // Set-up a Wi-Fi ACCESS POINT on the ESP32
+
 	while(1){ // do forever
 		 // Any new clients?  If not, tempClient is set to NULL
 		WiFiClient tempClient = telnetServer.available();
 		if (tempClient) {
-			Serial.println("\t\t\t\t\t\t\t\t\t***** New Wi-Fi client found *****");
+			// New Wi-Fi client found
 			for (int i=0; i < WIFI_MAX_CLIENTS; i++) {
 				if (telnetClients[i] == NULL) {
 					WiFiClient* client = new WiFiClient(tempClient);
@@ -58,12 +62,15 @@ void WiFiClientScan(void * parameter)
 				}
 			}
 		}
-		Serial.println("Scan for new clients completed");
 		vTaskDelay(1000 / portTICK_PERIOD_MS);  // re-scan after one second
 	}
 }	// end of WiFiClientRead
 
 
+
+// RTOS TASK function:
+// DO FOREVER: Cycles round Wi-Fi Clients reading characters from their respective
+// input buffers, and responding as appropriate based on the incoming data
 void WiFiClientRead(void * parameter)
 {
 	// Menu!
@@ -112,7 +119,7 @@ void WiFiClientRead(void * parameter)
 				}
 			}
 		}
-		Serial.println("READ from connected Wi-Fi client(s) completed");
+		//Serial.println("READ from connected Wi-Fi client(s) completed");
 		vTaskDelay(100 / portTICK_PERIOD_MS);  // re-check read buffer after 100ms
 	}
 }	// end of WiFiClientRead
